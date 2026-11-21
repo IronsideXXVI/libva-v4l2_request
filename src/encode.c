@@ -37,6 +37,19 @@
 #define V4L2R_ENC_CAPTURE_BUFFERS	2
 #define V4L2R_ENC_TIMEOUT_MS		2000
 
+/*
+ * V4L2_MPEG_VIDEO_BITRATE_MODE_CQ and V4L2_CID_MPEG_VIDEO_CONSTANT_QUALITY
+ * came into the UAPI together, after the 5.4 headers. Built without them,
+ * the driver does not offer VA_RC_CQP.
+ */
+#ifdef V4L2_CID_MPEG_VIDEO_CONSTANT_QUALITY
+#define V4L2R_ENC_HAVE_CQ		1
+#define V4L2R_ENC_RC_MODES		(VA_RC_CQP | VA_RC_CBR | VA_RC_VBR)
+#else
+#define V4L2R_ENC_HAVE_CQ		0
+#define V4L2R_ENC_RC_MODES		(VA_RC_CBR | VA_RC_VBR)
+#endif
+
 struct v4l2r_enc {
 	int fd;
 	uint32_t coded;			/* V4L2_PIX_FMT_H264 / _HEVC */
@@ -157,7 +170,7 @@ uint32_t v4l2r_encoder_attribute(VAProfile profile, VAConfigAttribType type)
 	case VAConfigAttribRTFormat:
 		return VA_RT_FORMAT_YUV420;
 	case VAConfigAttribRateControl:
-		return VA_RC_CQP | VA_RC_CBR | VA_RC_VBR;
+		return V4L2R_ENC_RC_MODES;
 	case VAConfigAttribEncPackedHeaders:
 		/*
 		 * The encoder writes its own parameter sets in band, in front of
@@ -377,6 +390,7 @@ static int set_ctrl(int fd, uint32_t id, int32_t value)
 	return ioctl(fd, VIDIOC_S_CTRL, &c);
 }
 
+#if V4L2R_ENC_HAVE_CQ
 /*
  * The AVE's constant-quality mode codes every frame with one QP taken from
  * a 101-step quality table (drivers/media/platform/apple/ave/ave-sess.c,
@@ -399,18 +413,21 @@ static int32_t qp_to_quality(uint32_t qp)
 			return q;
 	return 100;
 }
+#endif
 
 static int enc_apply_rc(struct v4l2r_enc *enc)
 {
 	int ret = 0;
 
-	switch (enc->rc_mode & (VA_RC_CQP | VA_RC_CBR | VA_RC_VBR)) {
+	switch (enc->rc_mode & V4L2R_ENC_RC_MODES) {
+#if V4L2R_ENC_HAVE_CQ
 	case VA_RC_CQP:
 		ret |= set_ctrl(enc->fd, V4L2_CID_MPEG_VIDEO_BITRATE_MODE,
 				V4L2_MPEG_VIDEO_BITRATE_MODE_CQ);
 		ret |= set_ctrl(enc->fd, V4L2_CID_MPEG_VIDEO_CONSTANT_QUALITY,
 				qp_to_quality(enc->qp));
 		break;
+#endif
 	case VA_RC_CBR:
 		ret |= set_ctrl(enc->fd, V4L2_CID_MPEG_VIDEO_BITRATE_MODE,
 				V4L2_MPEG_VIDEO_BITRATE_MODE_CBR);
