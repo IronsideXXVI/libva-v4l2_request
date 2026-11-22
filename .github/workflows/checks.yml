@@ -128,7 +128,7 @@ jobs:
 
   uapi-minimal:
     name: oldest kernel UAPI (5.4 headers, all stateless codecs compiled out)
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     container:
       image: ubuntu:20.04@sha256:8feb4d8ca5354def3d8fce243717141ce31e2c428701f6682bd2fafe15388214
       # Privileged so the step below can lower vm.mmap_rnd_bits for the job.
