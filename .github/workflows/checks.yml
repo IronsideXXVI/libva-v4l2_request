@@ -19,10 +19,10 @@ jobs:
         include:
           - cc: gcc
             arch: x86_64
-            os: ubuntu-24.04
+            os: ubuntu-latest
           - cc: clang
             arch: x86_64
-            os: ubuntu-24.04
+            os: ubuntu-latest
           - cc: gcc
             arch: aarch64
             os: ubuntu-24.04-arm
